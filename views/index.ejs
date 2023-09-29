@@ -12,11 +12,13 @@
       <input type="text" name="url" required placeholder="Enter URL" />
       <button type="submit">Shorten</button>
     </form>
-    <% if(shortUrl) { %>
-    <p>
-      Shortened URL:
+    <% if(errorMessage) { %>
+    <div class="error"><%= errorMessage %></div>
+    <% } %><% if(shortUrl) { %>
+    <div class="shortened-url">
+      Shortened URL -
       <a href="<%= shortUrl %>" target="_blank"><%= shortUrl %></a>
-    </p>
+    </div>
     <% } %>
   </body>
 </html>

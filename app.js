@@ -6,8 +6,20 @@ const path = require("path");
 const validUrl = require("valid-url");
 const shortid = require("shortid");
 const URL = require("./models/url");
+const session = require("express-session");
+const flash = require("connect-flash");
 
 const app = express();
+
+app.use(
+  session({
+    secret: "I am so hot.",
+    resave: false,
+    saveUninitialized: true,
+  })
+);
+
+app.use(flash());
 
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: false }));
@@ -27,19 +39,34 @@ mongoose
   });
 
 app.get("/", (req, res, next) => {
-  res.render("index", { shortUrl: "" });
+  let message = req.flash("error")[0];
+  res.render("index", {
+    shortUrl: null,
+    errorMessage: message,
+  });
 });
 
 app.post("/shorten", async (req, res, next) => {
   const url = req.body.url;
   if (!validUrl.isUri(url)) {
-    console.log("Invalid URL");
+    req.flash("error", "Invalid URL");
     return res.status(401).redirect("/");
   }
   let shortUrl = await URL.findOne({ url: url });
   if (shortUrl) {
-    console.log("URL already exists");
-    return res.status(200).render("index", { shortUrl: shortUrl.shortUrl });
+    shortUrl.date = new Date();
+    return shortUrl
+      .save()
+      .then((result) => {
+        res.status(200).render("index", {
+          shortUrl: shortUrl.shortUrl,
+          errorMessage: null,
+        });
+      })
+      .catch((err) => {
+        req.flash("error", "Something went wrong");
+        res.redirect("/");
+      });
   }
   const urlCode = shortid.generate();
   shortUrl = new URL({
@@ -50,19 +77,28 @@ app.post("/shorten", async (req, res, next) => {
   shortUrl
     .save()
     .then((result) => {
-      console.log("URL created");
-      res.status(200).render("index", { shortUrl: shortUrl.shortUrl });
+      res.status(200).render("index", {
+        shortUrl: shortUrl.shortUrl,
+        errorMessage: null,
+      });
     })
     .catch((err) => {
-      console.log(err);
+      req.flash("error", "Something went wrong");
+      res.redirect("/");
     });
 });
 
 app.get("/:urlCode", async (req, res, next) => {
   const urlCode = req.params.urlCode;
-  let url = await URL.findOne({ urlCode: urlCode });
+  let url;
+  try {
+    url = await URL.findOne({ urlCode: urlCode });
+  } catch (error) {
+    req.flash("error", "Something went wrong");
+    return res.status(500).redirect("/");
+  }
   if (!url) {
-    console.log("URL not found");
+    req.flash("error", "url not found");
     return res.status(404).redirect("/");
   }
   res.redirect(url.url);
