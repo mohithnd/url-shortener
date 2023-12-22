@@ -72,7 +72,8 @@ app.post("/shorten", async (req, res, next) => {
   shortUrl = new URL({
     url: url,
     urlCode: urlCode,
-    shortUrl: `${req.protocol}://${req.get("host")}/${urlCode}`,
+    // shortUrl: `${req.protocol}://${req.get("host")}/${urlCode}`,
+    shortUrl: `${req.get("host")}/${urlCode}`,
   });
   shortUrl
     .save()
